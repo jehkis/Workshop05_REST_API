@@ -33,26 +33,44 @@ app.locals.publicDir = publicDir;
 app.use(express.json());
 app.use(express.static(publicDir));
 
-// TODO: Complete the page routes in routes/pages.js.
+// Sivureitit (selaimelle HTML-sivut).
 app.use('/', pagesRouter);
 
-// TODO: Complete the API routes in routes/posts.js.
+// REST API -reitit (JSON).
 app.use('/api/posts', postsRouter);
 
+// 404: tuntematon osoite. API-pyynnöille JSON, selaimelle 404.html-sivu.
 app.use((req, res) => {
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'Route not found' });
+  }
   res.status(404).sendFile(path.join(publicDir, '404.html'));
 });
 
+// 500: palvelinvirheet. Express tunnistaa virheenkäsittelijän neljästä parametrista.
 app.use((error, req, res, next) => {
+  // Rikkinäinen JSON pyynnön rungossa on asiakkaan virhe (400), ei palvelimen.
+  if (error.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Invalid JSON in request body' });
+  }
   console.error(error.stack);
+  if (req.path.startsWith('/api/')) {
+    return res.status(500).json({ error: 'Server error' });
+  }
   res.status(500).sendFile(path.join(publicDir, '500.html'));
 });
 
+// Palvelin käynnistetään vasta, kun tietokantayhteys on valmis.
 connectToDatabase().then(() => {
   app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-    console.log('Mounted routers:');
-    console.log('  / -> routes/pages.js');
-    console.log('  /api/posts -> routes/posts.js');
+    console.log(`Palvelin käynnissä: http://localhost:${PORT}`);
+    console.log('Sivut:');
+    console.log('  GET    /  /about  /contact  /blog');
+    console.log('API (routes/posts.js):');
+    console.log('  POST   /api/posts        luo postaus');
+    console.log('  GET    /api/posts        kaikki postaukset');
+    console.log('  GET    /api/posts/:id    yksi postaus');
+    console.log('  PUT    /api/posts/:id    päivitä postaus');
+    console.log('  DELETE /api/posts/:id    poista postaus');
   });
 });
