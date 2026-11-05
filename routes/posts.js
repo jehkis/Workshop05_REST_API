@@ -9,50 +9,104 @@ function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id);
 }
 
+// Yhteinen virheenkäsittely: validointivirhe -> 400, kaikki muu -> 500.
+function handleError(res, error) {
+  if (error instanceof mongoose.Error.ValidationError) {
+    return res.status(400).json({
+      error: 'Validointivirhe',
+      // Kerätään mallin virheviestit taulukoksi, esim. ["Otsikko on pakollinen"].
+      details: Object.values(error.errors).map((e) => e.message)
+    });
+  }
+  console.error(error);
+  return res.status(500).json({ error: 'Palvelinvirhe' });
+}
+
+// POST /api/posts – luo uuden postauksen.
 router.post('/', async (req, res) => {
-  // TODO: Create a new Post instance from req.body.
-  // TODO: Save it to MongoDB.
-  // TODO: Return the created post with status code 201.
-  return res.status(501).json({ message: 'TODO: implement POST /api/posts' });
+  try {
+    // Luodaan uusi Post-dokumentti pyynnön rungosta (title, content, author).
+    const post = new Post({
+      title: req.body.title,
+      content: req.body.content,
+      author: req.body.author
+    });
+    // save() ajaa mallin validoinnit ja tallentaa dokumentin MongoDB:hen.
+    await post.save();
+    // 201 Created + luotu postaus (sisältää _id:n ja aikaleimat).
+    return res.status(201).json(post);
+  } catch (error) {
+    return handleError(res, error);
+  }
 });
 
+// GET /api/posts – hakee kaikki postaukset, uusin ensin.
 router.get('/', async (req, res) => {
-  // TODO: Query all posts from MongoDB.
-  // TODO: Return the results as JSON.
-  return res.status(501).json({ message: 'TODO: implement GET /api/posts' });
+  try {
+    const posts = await Post.find().sort({ createdAt: -1 });
+    return res.status(200).json(posts);
+  } catch (error) {
+    return handleError(res, error);
+  }
 });
 
+// GET /api/posts/:id – hakee yhden postauksen id:n perusteella.
 router.get('/:id', async (req, res) => {
-  // TODO: Validate req.params.id using isValidObjectId().
-  // TODO: Find one post by id.
-  // TODO: Return 404 if the post is not found.
+  // 400, jos id ei ole MongoDB:n ObjectId-muotoa.
   if (!isValidObjectId(req.params.id)) {
     return res.status(400).json({ error: 'Invalid post id' });
   }
 
-  return res.status(501).json({ message: 'TODO: implement GET /api/posts/:id' });
+  try {
+    const post = await Post.findById(req.params.id);
+    // 404, jos id on oikeaa muotoa mutta postausta ei ole.
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    return res.status(200).json(post);
+  } catch (error) {
+    return handleError(res, error);
+  }
 });
 
+// PUT /api/posts/:id – korvaa postauksen kentät uusilla.
 router.put('/:id', async (req, res) => {
-  // TODO: Validate req.params.id using isValidObjectId().
-  // TODO: Update the post with req.body.
-  // TODO: Return the updated post as JSON.
   if (!isValidObjectId(req.params.id)) {
     return res.status(400).json({ error: 'Invalid post id' });
   }
 
-  return res.status(501).json({ message: 'TODO: implement PUT /api/posts/:id' });
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    // PUT korvaa koko postauksen: kaikki kentät asetetaan pyynnön rungosta.
+    // Jos jokin kenttä puuttuu, save() palauttaa validointivirheen (400).
+    post.title = req.body.title;
+    post.content = req.body.content;
+    post.author = req.body.author;
+    await post.save(); // päivittää myös updatedAt-aikaleiman
+    return res.status(200).json(post);
+  } catch (error) {
+    return handleError(res, error);
+  }
 });
 
+// DELETE /api/posts/:id – poistaa postauksen.
 router.delete('/:id', async (req, res) => {
-  // TODO: Validate req.params.id using isValidObjectId().
-  // TODO: Delete the post by id.
-  // TODO: Return a success message as JSON.
   if (!isValidObjectId(req.params.id)) {
     return res.status(400).json({ error: 'Invalid post id' });
   }
 
-  return res.status(501).json({ message: 'TODO: implement DELETE /api/posts/:id' });
+  try {
+    const post = await Post.findByIdAndDelete(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    return res.status(200).json({ message: 'Post deleted', id: post._id });
+  } catch (error) {
+    return handleError(res, error);
+  }
 });
 
 module.exports = router;
