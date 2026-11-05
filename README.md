@@ -131,3 +131,10 @@ Save the `_id` returned by `POST` and reuse it in `GET/PUT/DELETE` requests.
   "author": ""
 }
 ```
+## Postman-kokoelma (bonus)
+`postman/Workshop05_REST_API.postman_collection.json` sisältää kaikki sivu- ja API-reitit testeineen (14 pyyntöä, 22 testiä).
+1. Käynnistä palvelin: `npm run dev`
+2. Postman → **Import** → valitse kokoelmatiedosto
+3. Kokoelman valikosta **Run collection** → **Run**
+
+`1. POST` tallentaa luodun postauksen `_id`:n kokoelman muuttujaan `postId`, jota GET/PUT/DELETE käyttävät. Komentorivillä sama: `npx newman run postman/Workshop05_REST_API.postman_collection.json`.

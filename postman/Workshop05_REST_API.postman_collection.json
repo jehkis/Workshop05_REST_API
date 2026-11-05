@@ -1,0 +1,155 @@
+{
+  "info": {
+    "name": "Workshop05 REST API – Blog posts",
+    "description": "CRUD-testit reiteille /api/posts. Aja järjestyksessä (Run collection): POST tallentaa luodun postauksen _id:n muuttujaan postId, jota GET/PUT/DELETE käyttävät. Palvelin käyntiin ensin: npm run dev.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "postId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Sivut",
+      "item": [
+        {
+          "name": "GET / (etusivu)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('HTML-sivu', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('text/html'));"
+          ] } }]
+        },
+        {
+          "name": "GET /blog",
+          "request": { "method": "GET", "url": "{{baseUrl}}/blog" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "GET /olematon (404-sivu)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/olematon" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 404', () => pm.response.to.have.status(404));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "API /api/posts",
+      "item": [
+        {
+          "name": "1. POST luo postaus",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/posts",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"My First Blog Post\",\n  \"content\": \"This API stores blog posts in MongoDB.\",\n  \"author\": \"Student\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+            "const post = pm.response.json();",
+            "pm.test('Vastauksessa _id ja aikaleimat', () => {",
+            "  pm.expect(post).to.have.property('_id');",
+            "  pm.expect(post).to.have.property('createdAt');",
+            "});",
+            "// Tallennetaan id seuraavia pyyntöjä varten.",
+            "pm.collectionVariables.set('postId', post._id);"
+          ] } }]
+        },
+        {
+          "name": "2. POST tyhjät kentät (400)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/posts",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"\",\n  \"content\": \"\",\n  \"author\": \"\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 400', () => pm.response.to.have.status(400));",
+            "pm.test('Validointivirheet listattu', () => pm.expect(pm.response.json().details).to.have.lengthOf(3));"
+          ] } }]
+        },
+        {
+          "name": "3. GET kaikki postaukset",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/posts" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Vastaus on taulukko', () => pm.expect(pm.response.json()).to.be.an('array'));"
+          ] } }]
+        },
+        {
+          "name": "4. GET yksi postaus",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/posts/{{postId}}" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Oikea postaus', () => pm.expect(pm.response.json()._id).to.eql(pm.collectionVariables.get('postId')));"
+          ] } }]
+        },
+        {
+          "name": "5. GET virheellinen id (400)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/posts/abc" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 400', () => pm.response.to.have.status(400));"
+          ] } }]
+        },
+        {
+          "name": "6. GET olematon id (404)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/posts/000000000000000000000000" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 404', () => pm.response.to.have.status(404));"
+          ] } }]
+        },
+        {
+          "name": "7. PUT päivitä postaus",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/posts/{{postId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"My First Blog Post (Updated)\",\n  \"content\": \"Updated content from Postman test.\",\n  \"author\": \"Student\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Otsikko päivittyi', () => pm.expect(pm.response.json().title).to.eql('My First Blog Post (Updated)'));"
+          ] } }]
+        },
+        {
+          "name": "8. PUT puuttuvat kentät (400)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/posts/{{postId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Vain otsikko\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 400', () => pm.response.to.have.status(400));"
+          ] } }]
+        },
+        {
+          "name": "9. DELETE poista postaus",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/posts/{{postId}}" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Onnistumisviesti', () => pm.expect(pm.response.json().message).to.eql('Post deleted'));"
+          ] } }]
+        },
+        {
+          "name": "10. DELETE sama uudelleen (404)",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/posts/{{postId}}" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 404', () => pm.response.to.have.status(404));"
+          ] } }]
+        },
+        {
+          "name": "11. Tuntematon API-reitti (404 JSON)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/olematon" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 404', () => pm.response.to.have.status(404));",
+            "pm.test('JSON-vastaus', () => pm.response.to.be.json);"
+          ] } }]
+        }
+      ]
+    }
+  ]
+}
