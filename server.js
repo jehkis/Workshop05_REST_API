@@ -11,12 +11,22 @@ const PORT = process.env.PORT || 3000;
 const publicDir = path.join(__dirname, 'public');
 
 async function connectToDatabase() {
-  // TODO (student): Connect to MongoDB using mongoose.
-  // Suggested steps:
-  // 1) Check that process.env.MONGODB_URI exists.
-  // 2) Call mongoose.connect(process.env.MONGODB_URI, { dbName: 'blog' }).
-  // 3) Log success and handle possible errors.
-  console.log('TODO: implement connectToDatabase()');
+  // 1) Tarkistetaan, että yhteysosoite on määritelty .env-tiedostossa.
+  if (!process.env.MONGODB_URI) {
+    console.error('Virhe: MONGODB_URI puuttuu. Luo .env-tiedosto .env.example-tiedoston pohjalta.');
+    process.exit(1);
+  }
+
+  try {
+    // 2) Yhdistetään MongoDB:hen. dbName valitsee tietokannan "blog".
+    await mongoose.connect(process.env.MONGODB_URI, { dbName: 'blog' });
+    // 3) Kerrotaan onnistumisesta.
+    console.log('Yhdistetty MongoDB:hen (tietokanta: blog)');
+  } catch (error) {
+    // Yhteys epäonnistui (väärä salasana, IP-osoitetta ei sallittu Atlasissa tms.).
+    console.error('MongoDB-yhteys epäonnistui:', error.message);
+    process.exit(1);
+  }
 }
 
 app.locals.publicDir = publicDir;
